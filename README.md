@@ -1,32 +1,41 @@
 # What is this?
 
-A template for python packages
-
-# How do I fill out this template?
-
-1. Change the `pyproject.toml` file (package name, version, etc)
-2. Change the `./main/your_package_name` folder
-3. Edit the `./main/your_package_name/__init__.py` file, and change the `from your_package_name.main import *`
-4. Open the `./main/setup.py` and edit the `install_requires=` part to include dependencies
-5. Edit this readme (it will be the front page of the package)
-6. Edit the `./main/your_package_name/main.py` to have your library in it
-7. Run `project local_install` to install what you just made
-8. Run `project publish` to release your package
-
-
-## (Readme template below)
-
-# What is this?
-
-(Your answer here)
+A simple python tool for hashing objects that python normally treats as unhashable. There are also a few other tools such as ways of deeply hashing functions, and an system for extending this hashability to work with other existing classes, such as dataframes or neural networks.
 
 # How do I use this?
 
-`pip install your_package_name`
+`pip install super_hash`
 
 
 ```python
-from your_package_name import something
+from super_hash import super_hash, function_hashers, FrozenDict, helpers
 
-# example of how to use your package here
+normally_unhashable = {
+    frozenset({
+        frozenset({
+            "key-deep-deep": 10
+        }.items()): "key-deep",
+    }.items()): "first_value",
+    "second_value": [
+        {"a": 10},
+    ]
+}
+a_hash = super_hash(normally_unhashable)
+
+# 
+# extend what can be hashed
+# 
+
+# example1:
+import pandas as pd
+# tell super_hash that pandas dataframes should be converted to csv, then hashed
+super_hash.conversion_table[pd.DataFrame] = lambda data_frame : super_hash(data_frame.to_csv())
+
+# example2:
+import torch
+# create a custom checker function
+is_non_scalar_pytorch_tensor = lambda value: isinstance(value, torch.Tensor) and len(value.shape) > 0
+# create a custom converter
+super_hash.conversion_table[is_non_scalar_pytorch_tensor] = lambda non_scalar_tensor: super_hash(non_scalar_tensor.tolist())
+
 ```
