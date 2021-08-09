@@ -129,7 +129,8 @@ class FrozenDict(collections.Mapping):
         return self._hash
 
 # lots of things are not hashable when they could be (dicts), we need to make them hashable
-def super_hash(value):
+def super_hash(value, *, __already_seen__=None):
+    already_seen = set() if __already_seen__ is None else __already_seen__
     # 
     # first check the table
     # 
@@ -153,11 +154,23 @@ def super_hash(value):
     # 
     hash_salt = -24979514859357
     if helpers.is_iterable(value):
+        if id(value) in already_seen:
+            return hash_salt
+        else:
+            already_seen.add(id(value))
+        
         # dict is a special case, switch to using all its keys
         if isinstance(value, dict):
-            value = (tuple([ super_hash(each_key), super_hash(each_value), super_hash(dict) ]) for each_key, each_value in value.items() )
+            value = (
+                tuple([
+                    super_hash(each_key, __already_seen__=already_seen),
+                    super_hash(each_value, __already_seen__=already_seen),
+                    super_hash(dict, __already_seen__=already_seen)
+                ]) 
+                    for each_key, each_value in value.items() 
+            )
         # all the items
-        return frozenset([ super_hash(each) for each in value ] + [ super_hash(value.__class__) ]).__hash__()
+        return frozenset([ super_hash(each, __already_seen__=already_seen) for each in value ] + [ super_hash(value.__class__, __already_seen__=already_seen) ]).__hash__()
     # some weird primitive, like a class or method or builtin function
     else:
         value_id = id(value)
@@ -181,8 +194,7 @@ def super_hash(value):
         
         # if has documentation (e.g. builtin)
         if type(value.__doc__) == str and len(value.__doc__) > 0 and type(value.__name__) == str:
-            output = f'{hash_salt}{value.__doc__}{value.__name__}'
-            super_hash._non_iterable_cache[value_id] = output
+            super_hash._non_iterable_cache[value_id] = f'{hash_salt}{value.__doc__}{value.__name__}'.__hash__()
             return super_hash._non_iterable_cache[value_id]
         
         # if all this fails, use the object id
