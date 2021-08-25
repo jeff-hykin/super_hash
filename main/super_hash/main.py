@@ -156,7 +156,7 @@ def super_hash(value, *, __already_seen__=None):
     # 
     for each_checker in reversed(super_hash.conversion_table.keys()):
         type_matches = isinstance(each_checker, type) and isinstance(value, each_checker)
-        callable_check_matches = callable(each_checker) and each_checker(value)
+        callable_check_matches = not isinstance(each_checker, type) and callable(each_checker) and each_checker(value)
         if type_matches or callable_check_matches:
             custom_hash_function = super_hash.conversion_table[each_checker]
             return custom_hash_function(value)
