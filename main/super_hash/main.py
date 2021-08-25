@@ -18,7 +18,7 @@ def helpers():
         import dis
         instructions = dis.get_instructions(value)
         to_hash = [str((each.opcode, each.argval)) for each in instructions]
-        hash_str = ' '.join(to_hash).encode('utf-8') + (value.__name__ if hasattr(value, "__name__") else "")
+        hash_str = str(' '.join(to_hash).encode('utf-8')) + str(value.__name__ if hasattr(value, "__name__") else "")
         return hash_str.__hash__()
     
     def source_hash(value):
@@ -88,7 +88,10 @@ def function_hashers():
             function_reference = getattr(module, function_name, None)
             if function_reference is None:
                 continue
-            instructions = dis.get_instructions(function_reference)
+            try:
+                instructions = dis.get_instructions(function_reference)
+            except TypeError as error:
+                continue
             instruction_hashes.append(str(instructions_to_hash(instructions)))
             child_names = get_referenced_function_names(instructions)
             for child_name in child_names:
@@ -130,7 +133,7 @@ class FrozenDict(collections.Mapping):
 
 # lots of things are not hashable when they could be (dicts), we need to make them hashable
 def super_hash(value, *, __already_seen__=None):
-    already_seen = set() if __already_seen__ is None else __already_seen__
+    already_seen = {} if __already_seen__ is None else __already_seen__
     # 
     # first check the table
     # 
@@ -153,30 +156,48 @@ def super_hash(value, *, __already_seen__=None):
     # generic fallback methods
     # 
     hash_salt = -24979514859357
+    value_id = id(value)
     if helpers.is_iterable(value):
-        if id(value) in already_seen:
-            return hash_salt
+        if value_id in already_seen:
+            # seen but not yet computed
+            if already_seen[value_id] is None:
+                return hash_salt
+            else:
+                return already_seen[value_id]
         else:
-            already_seen.add(id(value))
+            already_seen[value_id] = None
         
         # dict is a special case, switch to using all its keys
         if isinstance(value, dict):
             value = (
-                tuple([
+                (
                     super_hash(each_key, __already_seen__=already_seen),
                     super_hash(each_value, __already_seen__=already_seen),
-                    super_hash(dict, __already_seen__=already_seen)
-                ]) 
+                    super_hash(value.__class__),
+                ) 
                     for each_key, each_value in value.items() 
             )
         # all the items
-        return frozenset([ super_hash(each, __already_seen__=already_seen) for each in value ] + [ super_hash(value.__class__, __already_seen__=already_seen) ]).__hash__()
+        output = (
+            tuple(super_hash(each, __already_seen__=already_seen) for each in value) + (super_hash(value.__class__),)
+        ).__hash__()
+        # give it a real value
+        already_seen[value_id] = output
+        return already_seen[value_id]
     # some weird primitive, like a class or method or builtin function
     else:
-        value_id = id(value)
         # if cached
         if value_id in super_hash._non_iterable_cache:
             return super_hash._non_iterable_cache[value_id]
+        
+        # if its a type
+        if isinstance(value, type):
+            the_class = ""
+            if hasattr(the_class, "__name__"):
+                the_class += the_class.__name__
+            if hasattr(the_class, "__module__"):
+                the_class += str(the_class.__module__)
+            return hash(the_class)
         
         # if statically defined in a file
         try:
@@ -201,7 +222,7 @@ def super_hash(value, *, __already_seen__=None):
         super_hash._non_iterable_cache[value_id] = value_id
         return super_hash._non_iterable_cache[value_id]
 
-super_hash._non_iterable_cache = {}        
+super_hash._non_iterable_cache = {}
 super_hash.conversion_table = {
     # have functions default to deep hashing
     (lambda each: callable(each) and not isinstance(each, type)): function_hashers.smart
