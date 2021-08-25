@@ -1,5 +1,24 @@
 from simple_namespace import namespace
 import collections
+from hashlib import md5 
+import pickle
+
+debug = LazyDict()
+code = type(compile('1','','single'))
+
+def consistent_hash(value):
+    if isinstance(value, bytes):
+        return md5(value).hexdigest()
+    
+    if isinstance(value, str):
+        return md5(("@"+value).encode('utf-8')).hexdigest()
+    
+    if isinstance(value, (bool, int, float, type(None))):
+        return md5(str(value).encode('utf-8')).hexdigest()
+        
+    else:
+        return md5(pickle.dumps(value, protocol=4)).hexdigest()
+
 
 @namespace
 def helpers():
@@ -19,12 +38,12 @@ def helpers():
         instructions = dis.get_instructions(value)
         to_hash = [str((each.opcode, each.argval)) for each in instructions]
         hash_str = str(' '.join(to_hash).encode('utf-8')) + str(value.__name__ if hasattr(value, "__name__") else "")
-        return hash_str.__hash__()
+        return consistent_hash(hash_str)
     
     def source_hash(value):
         import inspect
         source = inspect.getsource(value)
-        return (f"{hash_salt}{source}").__hash__()
+        return consistent_hash(f"{hash_salt}{source}")
     
     return locals()
     
@@ -51,7 +70,7 @@ def function_hashers():
         
         # if has documentation (e.g. builtin)
         if type(value.__doc__) == str and len(value.__doc__) > 0 and type(value.__name__) == str:
-            return f'{hash_salt}{value.__doc__}{value.__name__}'.__hash__()
+            return consistent_hash(f'{hash_salt}{value.__doc__}{value.__name__}')
         
         # if all this fails, use the object id
         return id(value)
@@ -61,9 +80,9 @@ def function_hashers():
     
     # from https://github.com/andrewgazelka/smart-cache/blob/master/smart_cache/__init__.py
     def instructions_to_hash(instructions):
-        to_hash = [str((each.opcode, each.argval)) for each in instructions]
+        to_hash = [str((each.opcode, super_hash(each.argval))) for each in instructions]
         hash_str = ' '.join(to_hash).encode('utf-8')
-        return hash_str.__hash__()
+        return consistent_hash(hash_str)
     
     def get_referenced_function_names(instructions):
         return [ins.argval for ins in instructions if ins.opcode == 116]
@@ -97,9 +116,8 @@ def function_hashers():
             for child_name in child_names:
                 if child_name not in closed_set:
                     frontier.add(child_name)
-        
         hash_str = ' '.join(instruction_hashes).encode('utf-8')
-        return hash_str.__hash__()
+        return consistent_hash(hash_str)
     
     return locals()
 
@@ -127,7 +145,7 @@ class FrozenDict(collections.Mapping):
         if self._hash is None:
             hash_ = 0
             for pair in self.items():
-                hash_ ^= hash(pair)
+                hash_ ^= consistent_hash(pair)
             self._hash = hash_
         return self._hash
 
@@ -143,15 +161,22 @@ def super_hash(value, *, __already_seen__=None):
         if type_matches or callable_check_matches:
             custom_hash_function = super_hash.conversion_table[each_checker]
             return custom_hash_function(value)
-    # 
-    # fallback 1: check for __hash__
-    # 
-    if hasattr(value, '__hash__') and callable(value.__hash__):
+    
+    if type(value) == code:
         try:
-            return value.__hash__()
+            import dis
+            instructions = dis.get_instructions(value)
+            return consistent_hash(str([str((each.opcode, super_hash(each.argval))) for each in instructions]))
         except Exception as error:
-            # ignore the "TypeError: unhashable type:" errors and go to the next fallback method
-            pass
+            return consistent_hash(code.co_code)
+    # 
+    # fallback 1: attempt consistent hash
+    # 
+    try:
+        return consistent_hash(value)
+    except Exception as error:
+        # ignore the "TypeError: unhashable type:" errors and go to the next fallback method
+        pass
     # 
     # generic fallback methods
     # 
@@ -178,9 +203,13 @@ def super_hash(value, *, __already_seen__=None):
                     for each_key, each_value in value.items() 
             )
         # all the items
-        output = (
-            tuple(super_hash(each, __already_seen__=already_seen) for each in value) + (super_hash(value.__class__),)
-        ).__hash__()
+        output = super_hash(
+            tuple(
+                super_hash(each, __already_seen__=already_seen) for each in value
+            ) + (
+                super_hash(value.__class__),
+            )
+        )
         # give it a real value
         already_seen[value_id] = output
         return already_seen[value_id]
@@ -197,7 +226,7 @@ def super_hash(value, *, __already_seen__=None):
                 the_class += the_class.__name__
             if hasattr(the_class, "__module__"):
                 the_class += str(the_class.__module__)
-            return hash(the_class)
+            return consistent_hash(the_class)
         
         # if statically defined in a file
         try:
@@ -214,8 +243,8 @@ def super_hash(value, *, __already_seen__=None):
             pass
         
         # if has documentation (e.g. builtin)
-        if type(value.__doc__) == str and len(value.__doc__) > 0 and type(value.__name__) == str:
-            super_hash._non_iterable_cache[value_id] = f'{hash_salt}{value.__doc__}{value.__name__}'.__hash__()
+        if type(value.__doc__) == str and len(value.__doc__) > 0 and type(value).__name__ == str:
+            super_hash._non_iterable_cache[value_id] = consistent_hash(f'{hash_salt}{value.__doc__}{value.__name__}')
             return super_hash._non_iterable_cache[value_id]
         
         # if all this fails, use the object id
