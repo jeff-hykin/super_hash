@@ -3,7 +3,6 @@ import collections
 from hashlib import md5 
 import pickle
 
-debug = LazyDict()
 code = type(compile('1','','single'))
 
 def consistent_hash(value):
