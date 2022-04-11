@@ -154,12 +154,16 @@ def super_hash(value, *, __already_seen__=None):
     # 
     # first check the table
     # 
-    for each_checker in reversed(super_hash.conversion_table.keys()):
-        type_matches = isinstance(each_checker, type) and isinstance(value, each_checker)
-        callable_check_matches = not isinstance(each_checker, type) and callable(each_checker) and each_checker(value)
+    for pattern in reversed(super_hash.conversion_table.keys()):
+        type_matches = isinstance(pattern, type) and isinstance(value, pattern)
+        callable_check_matches = not isinstance(pattern, type) and callable(pattern) and pattern(value)
         if type_matches or callable_check_matches:
-            custom_hash_function = super_hash.conversion_table[each_checker]
+            custom_hash_function = super_hash.conversion_table[pattern]
             return custom_hash_function(value)
+    
+    super_hash_method = getattr(value, "__super_hash__", None)
+    if callable(super_hash_method):
+        return consistent_hash(value.__super_hash__())
     
     if type(value) == code:
         try:
