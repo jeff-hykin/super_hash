@@ -38,4 +38,8 @@ is_non_scalar_pytorch_tensor = lambda value: isinstance(value, torch.Tensor) and
 # create a custom converter
 super_hash.conversion_table[is_non_scalar_pytorch_tensor] = lambda non_scalar_tensor: super_hash(non_scalar_tensor.tolist())
 
+# example3:
+class Thing:
+    def __super_hash__(self):
+        return self.file_path
 ```
