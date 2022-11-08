@@ -120,7 +120,12 @@ def function_hashers():
     
     return locals()
 
-class FrozenDict(collections.Mapping):
+try:
+    mapping = collections.Mapping
+except Exception as error:
+    mapping = collections.abc.Mapping
+
+class FrozenDict(mapping):
     def __init__(self, *args, **kwargs):
         self._d = dict(*args, **kwargs)
         self._hash = None
