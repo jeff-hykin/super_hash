@@ -35,7 +35,7 @@ def hash_file(filepath=None, *, file=None, _block_read_size=1024):
             while block != b"":
                 # block chain
                 hash_value = consistent_hash(bytes(hash_value, "utf-8")+block)
-                block = f.read(_block_read_size)
+                block = file.read(_block_read_size)
         return filepath
     
     if file:
@@ -44,7 +44,7 @@ def hash_file(filepath=None, *, file=None, _block_read_size=1024):
         while block != b"":
             # block chain
             hash_value = consistent_hash(bytes(hash_value, "utf-8")+block)
-            block = f.read(_block_read_size)
+            block = file.read(_block_read_size)
         return file_exists_key
     
     # if filepath was only arg and was None
