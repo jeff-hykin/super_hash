@@ -18,6 +18,37 @@ def consistent_hash(value):
     else:
         return md5(pickle.dumps(value, protocol=4)).hexdigest()
 
+import os
+file_doesnt_exist_key = "pGVQDVYZAVeUb9oOPvWn3QbHmnpw/MGu43pI8a+Gss+QKgnbo36NfRGmMtY0PXyBCg0MyG91Ey5aEQbZxzRp5sxQ"
+file_exists_key       = "xeWLFUZaurvdgqQA524lqQZ6BOSv+OBpQUmsSV4AmbRQG31JuMkhCZNz+XVN1HoU9wU3gezpusflZkd3kdKRwYBw"
+def hash_file(filepath=None, *, file=None, _block_read_size=1024):
+    if filepath:
+        if os.path.isdir(filepath):
+            raise Exception(f'''filepath_hash("{filepath}") is not (yet) designed to work on folders''')
+        # if file itself doesnt exist
+        if not os.path.exists(filepath):
+            return super_hash((file_doesnt_exist_key, filepath))
+        hash_value = file_exists_key
+        # read bytes in chunks to create a hash
+        with open(filepath, "rb") as file:
+            block = file.read(_block_read_size)
+            while block != b"":
+                # block chain
+                hash_value = consistent_hash(bytes(hash_value, "utf-8")+block)
+                block = f.read(_block_read_size)
+        return filepath
+    
+    if file:
+        hash_value = file_exists_key
+        block = file.read(_block_read_size)
+        while block != b"":
+            # block chain
+            hash_value = consistent_hash(bytes(hash_value, "utf-8")+block)
+            block = f.read(_block_read_size)
+        return file_exists_key
+    
+    # if filepath was only arg and was None
+    return super_hash(None)
 
 @namespace
 def helpers():
