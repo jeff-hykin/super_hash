@@ -36,7 +36,7 @@ def hash_file(filepath=None, *, file=None, _block_read_size=1024):
                 # block chain
                 hash_value = consistent_hash(bytes(hash_value, "utf-8")+block)
                 block = file.read(_block_read_size)
-        return filepath
+        return hash_value
     
     if file:
         hash_value = file_exists_key
@@ -45,7 +45,7 @@ def hash_file(filepath=None, *, file=None, _block_read_size=1024):
             # block chain
             hash_value = consistent_hash(bytes(hash_value, "utf-8")+block)
             block = file.read(_block_read_size)
-        return file_exists_key
+        return hash_value
     
     # if filepath was only arg and was None
     return super_hash(None)
