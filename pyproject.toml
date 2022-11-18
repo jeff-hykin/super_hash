@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "super_hash"
-version = "1.2.2"
+version = "1.2.3"
 description = "hash the unhashable, hash everything"
 authors=[]
 
@@ -12,7 +12,6 @@ license = "MIT"
 
 [tool.poetry.dependencies]
 python = ">=3.7,<3.10"
-simple-namespace = "^1.0.0"
 
 [tool.poetry.dev-dependencies]
 twine = "3.4.1"

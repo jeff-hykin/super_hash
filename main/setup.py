@@ -26,7 +26,6 @@ setuptools.setup(
     license=package_info["license"],
     packages=[package_info["name"]],
     install_requires=[
-        'simple-namespace ==1.0.0',
         # examples:
         # 'aiohttp >= 3.7.4',
         # 'requests == 2.26.0',

@@ -1,8 +1,9 @@
-from simple_namespace import namespace
+from .__dependencies__ import simple_namespace
 import collections
 from hashlib import md5 
 import pickle
 
+namespace = simple_namespace.namespace
 code = type(compile('1','','single'))
 
 def consistent_hash(value):
