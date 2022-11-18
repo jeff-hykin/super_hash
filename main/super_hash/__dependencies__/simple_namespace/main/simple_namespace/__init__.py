@@ -1,1 +1,1 @@
-from simple_namespace.main import *
+from .main import *

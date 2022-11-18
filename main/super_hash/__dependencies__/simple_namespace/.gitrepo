@@ -6,7 +6,7 @@
 [subrepo]
 	remote = git@github.com:jeff-hykin/simple_namespace.git
 	branch = master
-	commit = 41ea137071f8b039e139e1ff4917d5a0e3a39c6c
-	parent = 6f58dfffef68204af1e3c27ffff6b54e3db8ab0e
+	commit = 53eb6c49d63f572a4c3ebc039a6eae61e4482606
+	parent = cf58dbf01defb89f3a59a2a8d1177b6d53df911c
 	method = merge
 	cmdver = 0.4.1
