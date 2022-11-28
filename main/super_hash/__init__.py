@@ -155,7 +155,11 @@ def function_hashers():
 try:
     mapping = collections.Mapping
 except Exception as error:
-    mapping = collections.abc.Mapping
+    try:
+        import collections.abc
+        mapping = collections.abc.Mapping
+    except Exception as error:
+        mapping = object
 
 class FrozenDict(mapping):
     def __init__(self, *args, **kwargs):
