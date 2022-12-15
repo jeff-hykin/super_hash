@@ -1,9 +1,7 @@
-from .__dependencies__ import simple_namespace
 import collections
 from hashlib import md5 
 import pickle
 
-namespace = simple_namespace.namespace
 code = type(compile('1','','single'))
 
 def consistent_hash(value):
@@ -51,10 +49,9 @@ def hash_file(filepath=None, *, file=None, _block_read_size=1024):
     # if filepath was only arg and was None
     return super_hash(None)
 
-@namespace
-def helpers():
-    
+class helpers:
     # yup this is how to detect iterables in python
+    @staticmethod
     def is_iterable(thing):
         # https://stackoverflow.com/questions/1952464/in-python-how-do-i-determine-if-an-object-is-iterable
         try:
@@ -63,7 +60,8 @@ def helpers():
             return False
         else:
             return True
-            
+    
+    @staticmethod        
     def shallow_instruction_hash(value):
         import dis
         instructions = dis.get_instructions(value)
@@ -71,15 +69,14 @@ def helpers():
         hash_str = str(' '.join(to_hash).encode('utf-8')) + str(value.__name__ if hasattr(value, "__name__") else "")
         return consistent_hash(hash_str)
     
+    @staticmethod
     def source_hash(value):
         import inspect
         source = inspect.getsource(value)
         return consistent_hash(f"{hash_salt}{source}")
     
-    return locals()
-    
-@namespace
-def function_hashers():
+class function_hashers:
+    @staticmethod
     def smart(value):
         # if defined in a proper module
         try:
@@ -106,18 +103,22 @@ def function_hashers():
         # if all this fails, use the object id
         return id(value)
     
+    @staticmethod
     def shallow(value):
         return helpers.shallow_instruction_hash(value)
     
     # from https://github.com/andrewgazelka/smart-cache/blob/master/smart_cache/__init__.py
+    @staticmethod
     def instructions_to_hash(instructions):
         to_hash = [str((each.opcode, super_hash(each.argval))) for each in instructions]
         hash_str = ' '.join(to_hash).encode('utf-8')
         return consistent_hash(hash_str)
     
+    @staticmethod
     def get_referenced_function_names(instructions):
         return [ins.argval for ins in instructions if ins.opcode == 116]
     
+    @staticmethod
     def deep(input_func):
         import inspect
         import dis
@@ -150,8 +151,6 @@ def function_hashers():
         hash_str = ' '.join(instruction_hashes).encode('utf-8')
         return consistent_hash(hash_str)
     
-    return locals()
-
 try:
     mapping = collections.Mapping
 except Exception as error:
