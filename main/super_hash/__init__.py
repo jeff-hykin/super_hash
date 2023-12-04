@@ -82,7 +82,6 @@ class helpers:
 class function_hashers:
     @staticmethod
     def smart(value, debug=True):
-        print("smart")
         # if defined in a proper module
         try:
             return function_hashers.deep(value)
@@ -117,19 +116,16 @@ class function_hashers:
     # from https://github.com/andrewgazelka/smart-cache/blob/master/smart_cache/__init__.py
     @staticmethod
     def instructions_to_hash(instructions):
-        print("instructions_to_hash")
         to_hash = tuple(str((each.opcode, super_hash(each.argval))) for each in instructions)
         hash_str = ' '.join(to_hash).encode('utf-8')
         return consistent_hash(hash_str)
     
     @staticmethod
     def get_referenced_function_names(instructions):
-        print("get_referenced_function_names")
         return tuple(ins.argval for ins in instructions if ins.opcode == LOAD_GLOBAL_CODE)
     
     @staticmethod
     def deep(input_func, debug=False):
-        print("deep")
         import inspect
         module = inspect.getmodule(input_func)
         closed_set = []
