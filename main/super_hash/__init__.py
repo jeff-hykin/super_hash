@@ -81,10 +81,16 @@ class helpers:
     
 class function_hashers:
     @staticmethod
-    def smart(value, debug=True):
+    def smart(value, debug=False, already_seen=None):
+        if not already_seen:
+            already_seen = set()
+        # for recursive functions (this is an imperfect fix for multiple-recusion functions)
+        if id(value) in already_seen:
+            return function_hashers.shallow(value)
+        already_seen.add(id(value))
         # if defined in a proper module
         try:
-            return function_hashers.deep(value)
+            return function_hashers.deep(value, already_seen=already_seen)
         except Exception as error:
             if debug: print("couldn't do deep", error)
             pass
@@ -115,8 +121,11 @@ class function_hashers:
     
     # from https://github.com/andrewgazelka/smart-cache/blob/master/smart_cache/__init__.py
     @staticmethod
-    def instructions_to_hash(instructions):
-        to_hash = tuple(str((each.opcode, super_hash(each.argval))) for each in instructions)
+    def instructions_to_hash(instructions, already_seen=None,):
+        # weird = [ each.argval for each in instructions if type(each.argval) == code and not repr(each.argval).startswith("<code object <lambda") ]
+        # if any(weird):
+        #     import code as code_module; code_module.interact(local={**globals(),**locals()})
+        to_hash = tuple(str((each.opcode, (super_hash(each.argval) if type(each.argval) != code else function_hashers.smart(each.argval, already_seen=already_seen) ))) for each in instructions)
         hash_str = ' '.join(to_hash).encode('utf-8')
         return consistent_hash(hash_str)
     
@@ -125,7 +134,7 @@ class function_hashers:
         return tuple(ins.argval for ins in instructions if ins.opcode == LOAD_GLOBAL_CODE)
     
     @staticmethod
-    def deep(input_func, debug=False):
+    def deep(input_func, debug=False, already_seen=None):
         import inspect
         module = inspect.getmodule(input_func)
         closed_set = []
@@ -134,7 +143,12 @@ class function_hashers:
         
         base_instructions = tuple(dis.get_instructions(input_func))
         child_names = function_hashers.get_referenced_function_names(base_instructions)
-        instruction_hashes.append(function_hashers.instructions_to_hash(base_instructions))
+        instruction_hashes.append(function_hashers.instructions_to_hash(base_instructions,already_seen=already_seen))
+        if debug:
+            print(f'''base_instructions = {base_instructions}''')
+            print(f'''child_names = {child_names}''')
+            print(f'''instruction_hashes = {instruction_hashes}''')
+            
         for name in child_names:
             if name not in frontier:
                 frontier.append(name)
@@ -148,14 +162,18 @@ class function_hashers:
             if function_reference is None:
                 continue
             try:
-                instructions = dis.get_instructions(function_reference)
+                instructions = tuple(dis.get_instructions(function_reference))
             except TypeError as error:
                 continue
-            instruction_hashes.append(function_hashers.instructions_to_hash(instructions))
+            
+            instruction_hashes.append(
+                super_hash(tuple(function_hashers.instructions_to_hash((each,),already_seen=already_seen) for each in instructions))
+            )
             child_names = function_hashers.get_referenced_function_names(instructions)
             for child_name in child_names:
                 if child_name not in closed_set and child_name not in frontier:
                     frontier.append(child_name)
+        
         hash_str = ' '.join(instruction_hashes).encode('utf-8')
         return consistent_hash(hash_str)
     
