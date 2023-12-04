@@ -81,7 +81,8 @@ class helpers:
     
 class function_hashers:
     @staticmethod
-    def smart(value, debug=False):
+    def smart(value, debug=True):
+        print("smart")
         # if defined in a proper module
         try:
             return function_hashers.deep(value)
@@ -116,31 +117,37 @@ class function_hashers:
     # from https://github.com/andrewgazelka/smart-cache/blob/master/smart_cache/__init__.py
     @staticmethod
     def instructions_to_hash(instructions):
+        print("instructions_to_hash")
         to_hash = tuple(str((each.opcode, super_hash(each.argval))) for each in instructions)
         hash_str = ' '.join(to_hash).encode('utf-8')
         return consistent_hash(hash_str)
     
     @staticmethod
     def get_referenced_function_names(instructions):
+        print("get_referenced_function_names")
         return tuple(ins.argval for ins in instructions if ins.opcode == LOAD_GLOBAL_CODE)
     
     @staticmethod
-    def deep(input_func):
+    def deep(input_func, debug=False):
+        print("deep")
         import inspect
         module = inspect.getmodule(input_func)
-        closed_set = set()
+        closed_set = []
         instruction_hashes = [] if not hasattr(input_func, "__name__") else [ input_func.__name__ ]
-        frontier = set()
+        frontier = []
         
         base_instructions = tuple(dis.get_instructions(input_func))
         child_names = function_hashers.get_referenced_function_names(base_instructions)
         instruction_hashes.append(function_hashers.instructions_to_hash(base_instructions))
         for name in child_names:
-            frontier.add(name)
+            if name not in frontier:
+                frontier.append(name)
         
         while len(frontier) > 0:
             function_name = frontier.pop()
-            closed_set.add(function_name)
+            if function_name not in closed_set:
+                closed_set.append(function_name)
+                
             function_reference = getattr(module, function_name, None)
             if function_reference is None:
                 continue
@@ -151,8 +158,8 @@ class function_hashers:
             instruction_hashes.append(function_hashers.instructions_to_hash(instructions))
             child_names = function_hashers.get_referenced_function_names(instructions)
             for child_name in child_names:
-                if child_name not in closed_set:
-                    frontier.add(child_name)
+                if child_name not in closed_set and child_name not in frontier:
+                    frontier.append(child_name)
         hash_str = ' '.join(instruction_hashes).encode('utf-8')
         return consistent_hash(hash_str)
     
