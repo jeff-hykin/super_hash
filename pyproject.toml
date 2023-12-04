@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "super_hash"
-version = "1.2.8"
+version = "1.3.1"
 description = "hash the unhashable, hash everything"
 authors=[]
 
